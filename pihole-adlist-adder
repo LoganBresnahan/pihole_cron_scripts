@@ -4,8 +4,8 @@
 # will not have false positives.
 
 # To make executable by anacron run the following in your terminal
-# sudo chmod +x pihole-addlist-adder
-# sudo chown root:root pihole-addlist-adder
+# sudo chmod +x pihole-adlist-adder
+# sudo chown root:root pihole-adlist-adder
 
 ADLISTS_HOST="https://v.firebog.net/hosts/lists.php?type=tick"
 echo "Requesting adlists from ${ADLISTS_HOST}"
