@@ -1,0 +1,9 @@
+#!/bin/sh
+# If cloudflared is installed through its service command, the update command below will work.
+# https://docs.pi-hole.net/guides/dns-over-https/
+
+# To make executable by anacron run the following in your terminal
+# sudo chmod +x cloudflared-updater
+# sudo chown root:root cloudflared-updater
+
+cloudflared update

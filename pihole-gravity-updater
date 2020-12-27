@@ -1,0 +1,15 @@
+#!/bin/sh
+# Update PiHole's Gravity List and Restart DNS
+
+# To make executable by anacron run the following in your terminal
+# sudo chmod +x pihole-gravity-updater
+# sudo chown root:root pihole-gravity-updater
+
+echo "*****Updating Pihole*****"
+pihole updatePihole
+echo "*****Updating Gravity*****"
+pihole updateGravity
+echo "*****Restarting DNS*****"
+pihole restartdns
+echo "*****Showing Pihole Status*****"
+pihole status
