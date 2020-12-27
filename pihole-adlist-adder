@@ -16,7 +16,7 @@ if [ $(echo $ADLISTS | cut -c1-8) = "https://" ];
 then
   for ADLIST in $ADLISTS
   do
-    SELECT_RESULT=$(sudo sqlite3 /etc/pihole/gravity.db \
+    SELECT_RESULT=$(sqlite3 /etc/pihole/gravity.db \
       'SELECT * FROM adlist WHERE address = "'${ADLIST}'";')
 
     # If the address doesn't already exist in the adlist table insert it.
@@ -24,7 +24,7 @@ then
     then
       echo "Inserting ${ADLIST} into gravity.db adlist table"
 
-      sudo sqlite3 /etc/pihole/gravity.db \
+      sqlite3 /etc/pihole/gravity.db \
         'INSERT INTO adlist (address, comment) VALUES("'${ADLIST}'", "Migrated from '${ADLISTS_HOST}'");'
     else
       echo "${ADLIST} already exists"
