@@ -7,67 +7,76 @@
 # sudo chmod +x pihole-adlist-adder-remover
 # sudo chown root:root pihole-adlist-adder-remover
 
+set -eu
+
 DATABASE_PATH="/etc/pihole/gravity.db"
 ADLISTS_HOST="https://v.firebog.net/hosts/lists.php?type=tick"
+
 echo "Requesting adlists from ${ADLISTS_HOST}"
-ADLISTS=$(curl -s $ADLISTS_HOST)
 
-# If we get a list of URL's and not HTML we continue.
-if [ $(echo $ADLISTS | cut -c1-8) = "https://" ];
-then
-  for ADLIST in $ADLISTS
-  do
-    SELECT_RESULT=$(sqlite3 $DATABASE_PATH \
-      'SELECT * FROM adlist WHERE address = "'${ADLIST}'";')
+if ! ADLISTS=$(curl -fsS "$ADLISTS_HOST"); then
+  echo "Error retrieving adlists from ${ADLISTS_HOST}"
+  exit 1
+fi
 
-    # If the address doesn't already exist in the adlist table insert it.
-    if [ -z "$SELECT_RESULT" ];
-    then
-      echo "Inserting ${ADLIST} into gravity.db adlist table"
+# Sanity check: first line must look like a URL.
+FIRST_LINE=$(printf '%s\n' "$ADLISTS" | head -n1)
+case "$FIRST_LINE" in
+  https://*) ;;
+  *)
+    echo "Unexpected response from ${ADLISTS_HOST}"
+    exit 1
+    ;;
+esac
 
-      sqlite3 $DATABASE_PATH \
-        'INSERT INTO adlist (address, comment) VALUES("'${ADLIST}'", "Migrated from '${ADLISTS_HOST}'");'
-    else
-      echo "${ADLIST} already exists"
-    fi
-  done
+# SQL-escape a value by doubling single quotes.
+sql_escape() {
+  printf '%s' "$1" | sed "s/'/''/g"
+}
 
-  # Check for stale adlists in our database.
-  for RESULT in $(sqlite3 $DATABASE_PATH \
-    'SELECT address, enabled FROM adlist WHERE comment = "Migrated from '${ADLISTS_HOST}'";')
-  do
-    IFS="|"; set -- $RESULT
-    ADDRESS=$1
-    ENABLED=$2
-    unset IFS
+COMMENT="Migrated from ${ADLISTS_HOST}"
+COMMENT_ESC=$(sql_escape "$COMMENT")
+
+# Add missing adlists.
+printf '%s\n' "$ADLISTS" | while IFS= read -r ADLIST; do
+  [ -z "$ADLIST" ] && continue
+  ADLIST_ESC=$(sql_escape "$ADLIST")
+
+  SELECT_RESULT=$(sqlite3 "$DATABASE_PATH" \
+    "SELECT 1 FROM adlist WHERE address = '${ADLIST_ESC}';")
+
+  if [ -z "$SELECT_RESULT" ]; then
+    echo "Inserting ${ADLIST} into gravity.db adlist table"
+    sqlite3 "$DATABASE_PATH" \
+      "INSERT INTO adlist (address, comment) VALUES('${ADLIST_ESC}', '${COMMENT_ESC}');"
+  else
+    echo "${ADLIST} already exists"
+  fi
+done
+
+# Reconcile enabled/disabled state against current upstream list.
+sqlite3 -separator '|' "$DATABASE_PATH" \
+  "SELECT address, enabled FROM adlist WHERE comment = '${COMMENT_ESC}';" \
+  | while IFS='|' read -r ADDRESS ENABLED; do
+    [ -z "${ADDRESS:-}" ] && continue
 
     EXISTS_ON_ADLISTS_HOST="NO"
+    if printf '%s\n' "$ADLISTS" | grep -Fxq "$ADDRESS"; then
+      EXISTS_ON_ADLISTS_HOST="YES"
+    fi
 
-    for ADLIST in $ADLISTS
-    do
-      if [ $ADDRESS = $ADLIST ];
-      then
-        EXISTS_ON_ADLISTS_HOST="YES"
-      fi
-    done
+    ADDRESS_ESC=$(sql_escape "$ADDRESS")
 
-    if [ $EXISTS_ON_ADLISTS_HOST != "YES" ] && [ $ENABLED = "1" ];
-    then
+    if [ "$EXISTS_ON_ADLISTS_HOST" != "YES" ] && [ "$ENABLED" = "1" ]; then
       echo "Disabling ${ADDRESS}"
-
-      sqlite3 $DATABASE_PATH \
-        'UPDATE adlist SET enabled = 0 WHERE address = "'${ADDRESS}'";'
-    elif [ $EXISTS_ON_ADLISTS_HOST = "YES" ] && [ $ENABLED = "0" ];
-    then
+      sqlite3 "$DATABASE_PATH" \
+        "UPDATE adlist SET enabled = 0 WHERE address = '${ADDRESS_ESC}';"
+    elif [ "$EXISTS_ON_ADLISTS_HOST" = "YES" ] && [ "$ENABLED" = "0" ]; then
       echo "Re-enabling ${ADDRESS}"
-
-      sqlite3 $DATABASE_PATH \
-        'UPDATE adlist SET enabled = 1 WHERE address = "'${ADDRESS}'";'
+      sqlite3 "$DATABASE_PATH" \
+        "UPDATE adlist SET enabled = 1 WHERE address = '${ADDRESS_ESC}';"
     fi
   done
-else
-  echo "Error retrieving adlists from ${ADLISTS_HOST}"
-fi
 
 
 # Copyright 2021 Logan Bresnahan
