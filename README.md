@@ -2,6 +2,8 @@
 
 Three simple scripts written with the intent to be run by a cron job scheduler.
 
+> **Compatibility note:** These scripts were originally written and tested against Pi-hole v5.x (circa 2021), when `gravity.db` had its original schema and the CLI exposed `pihole updatePihole` / `pihole updateGravity`. Pi-hole v6 (released February 2025) changed both the CLI surface and parts of the database layout. They have **not** been verified against v6+ — review and test on your installation before relying on them.
+
 In my own pihole system I've added these to the `/etc/cron.daily` directory. Scripts inside this directory are handled by `anacron`. To make them executable make sure to run:
 
 ```bash

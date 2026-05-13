@@ -1,9 +1,16 @@
 #!/bin/sh
 # Update Pihole, PiHole's Gravity List, and Restart DNS
+#
+# NOTE: Pi-hole v6 (Feb 2025) renamed some CLI commands. If on v6+:
+#   pihole updatePihole  -> pihole -up
+#   pihole updateGravity -> pihole -g  (alias still works)
+# Verify against your installed version before deploying.
 
 # To make executable by anacron run the following in your terminal
 # sudo chmod +x pihole-gravity-updater
 # sudo chown root:root pihole-gravity-updater
+
+set -eu
 
 echo "*****Updating Pihole*****"
 pihole updatePihole
