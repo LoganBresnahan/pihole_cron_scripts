@@ -16,6 +16,14 @@ Anacron runs scripts in alphabetical order. For just these scripts specifically 
 2. pihole-adlist-adder-remover
 3. pihole-gravity-updater
 
+## Tests
+
+`test/test-adlist-adder-remover.sh` runs `pihole-adlist-adder-remover` against a throwaway sqlite DB and a `file://` fake firebog response. Requires `sqlite3` and `curl`. Run from the repo root:
+
+```bash
+sh test/test-adlist-adder-remover.sh
+```
+
 <br/>
 <br/>
 
